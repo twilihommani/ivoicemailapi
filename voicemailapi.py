@@ -1,4 +1,6 @@
 import json
+import sys
+import os
 
 from flask import Flask
 from flask.ext.restful import Resource, Api, reqparse, abort
@@ -10,12 +12,14 @@ from bson.json_util import loads, dumps
 app = Flask(__name__)
 api = Api(app)
 
-client = MongoClient("MongoDBUrl") # To replace
+#Need to define the MONGO_URL env var with a valid url inside
+db_url=os.getenv("MONGO_URL")
+client = MongoClient(db_url)
 
 db = client.get_default_database()
 collection = db.contacts
 
-# parser heritance doesn't work now 
+# TODO: take advantage of the parser inheritance. For now it's not working
 parser = RequestParser()
 parser.add_argument('name', type=str)
 parser.add_argument('fname', type=str)
@@ -37,6 +41,7 @@ def abort_if_contact_does_not_exist(contact_id):
         _id= ObjectId(contact_id)
     except:
         abort(404, message="{} is not a correct bsonId".format(contact_id))
+
     contact = collection.find_one({'_id': _id})
     if not contact:
         abort(404, message="Contact {} doesn't exist".format(contact_id))
@@ -78,7 +83,6 @@ class Contact(Resource):
         args = parser.parse_args()
         objectId = collection.update({"_id": ObjectId(contact_id)}, {"$set": {'speech': args.get('speech')}})
         return dumps(objectId), 200
-
     
     def delete(self, contact_id):
         abort_if_contact_does_not_exist(contact_id)
